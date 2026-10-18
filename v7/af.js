@@ -41,6 +41,7 @@ management: "同期と管理",
 customize: "個人化",
 historyButton: "履歴",
 close: "閉じる",
+cancel: "キャンセル",
 appNotFound: "該当するアプリが見つかりません",
 appOpen: "アプリを開く",
 calculate: "計算",
@@ -124,6 +125,7 @@ management: "Manage",
 customize: "Customize",
 historyButton: "History",
 close: "Close",
+cancel: "Cancel",
 appNotFound: "No matching apps found",
 appOpen: "Open app",
 calculate: "Calculate",
@@ -207,6 +209,7 @@ management: "관리",
 customize: "커스터마이즈",
 historyButton: "기록 표시",
 close: "닫기",
+cancel: "취소",
 appNotFound: "일치하는 앱이 없습니다",
 appOpen: "앱 열기",
 calculate: "계산",
@@ -277,6 +280,7 @@ management: "관리",
 customize: "맞춤설정",
 historyButton: "기록 표시",
 close: "닫기",
+cancel: "취소",
 appNotFound: "일치하는 응용프로그램이 없습니다",
 appOpen: "응용프로그램 열기",
 calculate: "계산",
@@ -347,6 +351,7 @@ management: "管理",
 customize: "自定义",
 historyButton: "显示历史",
 close: "关闭",
+cancel: "取消",
 appNotFound: "未找到匹配的应用",
 appOpen: "打开应用",
 calculate: "计算",
@@ -417,6 +422,7 @@ management: "管理",
 customize: "自訂",
 historyButton: "顯示歷史",
 close: "關閉",
+cancel: "取消",
 appNotFound: "找不到符合的應用程式",
 appOpen: "開啟應用程式",
 calculate: "計算",
@@ -487,6 +493,7 @@ management: "Управление",
 customize: "Настройка",
 historyButton: "История",
 close: "Закрыть",
+cancel: "Отмена",
 appNotFound: "Подходящие приложения не найдены",
 appOpen: "Открыть приложение",
 calculate: "Вычислить",
@@ -778,8 +785,8 @@ console.log("[Settings] Wallpaper reset: only Newtab wallpaper records were dele
 return true;
 } catch (error) { console.error("[Settings] Wallpaper reset failed:", error); return false; }
 };
-const deleteSearchHistory = () => {
-const confirmed = window.confirm(t("deleteHistoryConfirm"));
+const deleteSearchHistory = async () => {
+const confirmed = await confirmNewtab(t("deleteHistoryConfirm"), t("delete"));
 if (!confirmed) { console.log("[Settings] Search history deletion cancelled."); return; }
 try {
 localStorage.removeItem(HISTORY_KEY);
@@ -1060,6 +1067,61 @@ const filterAppDropdown = () => { const sb = getEl("#searchBox"); if (!sb) retur
 const performSearch = (query) => { const q = query.trim(); if (!q) return; updateHistory(q); let url = ""; switch (searchEngine) { case "google": url = `https://www.google.com/search?q=${encodeURIComponent(q)}`; break; case "bing": url = `https://www.bing.com/search?q=${encodeURIComponent(q)}`; break; case "yahoo": url = `https://search.yahoo.co.jp/search?p=${encodeURIComponent(q)}`; break; case "duckduckgo": url = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`; break; case "nenara": url = `https://www.naenara.com.kp/main/search_first?sVal=${encodeURIComponent(q)}`; break; case "neighb": url = `https://search.naver.com/search.naver?query=${encodeURIComponent(q)}`; break; default: url = `https://www.google.com/search?q=${encodeURIComponent(q)}`; break; } window.location.href = url; };
 const showHistoryDialog = () => { const history = getHistory(); createNewtabDialog(t("searchHistory"), (content, dialog) => { if (!content || !dialog) { console.error("[History] Dialog content or dialog element missing."); return; } if (history.length === 0) { const empty = document.createElement("p"); empty.className = "dialog-empty"; empty.textContent = t("historyEmpty"); content.appendChild(empty); console.log("[History] Dialog opened with no history."); return; } const list = document.createElement("ul"); history.slice(-40).reverse().forEach((item) => { const query = typeof item === "string" ? item : item?.query; if (!query) { console.error("[History] Skipped invalid history item."); return; } const time = typeof item === "string" ? null : item?.time; const dateStr = time ? formatDateTime(new Date(time)) : ""; const li = document.createElement("li"); const queryText = document.createElement("span"); queryText.textContent = query; const timeText = document.createElement("span"); timeText.textContent = dateStr; timeText.style.color = "#999"; timeText.style.fontSize = "12px"; timeText.style.whiteSpace = "nowrap"; li.append(queryText, timeText); li.addEventListener("click", () => { closeNewtabDialog(dialog, "history item"); if (query.startsWith("http://") || query.startsWith("https://")) { console.log(`[History] Opening URL from history: ${query}`); window.location.href = query; } else { console.log(`[History] Searching history item: ${query}`); performSearch(query); } }); list.appendChild(li); }); content.appendChild(list); console.log(`[History] Dialog rendered: ${list.children.length} item(s).`); }); console.log("[History] Dialog requested."); };
 const closeNewtabDialog = (dialog, reason = "close") => { if (!dialog) { console.error("[Dialog] Close failed: element missing."); return; } if (!document.body.contains(dialog)) { console.error("[Dialog] Close ignored: dialog is not attached."); return; } if (dialog.dataset.closing === "true") { console.log(`[Dialog] Close already running: ${reason}`); return; } if (reason === "replaced") { dialog.remove(); console.log("[Dialog] Replaced dialog removed immediately."); return; } dialog.dataset.closing = "true"; dialog.setAttribute("aria-hidden", "true"); dialog.classList.remove("is-open"); dialog.classList.add("is-closing"); const removeDialog = () => { if (dialog.parentNode) dialog.remove(); console.log(`[Dialog] Dialog closed: ${reason}`); }; window.setTimeout(removeDialog, 170); };
+/* --- 確認ダイアログ（ブラウザの confirm の代わり。SaeTab のダイアログと同じ見た目で、テーマも効く） --- */
+const confirmNewtab = (message, okLabel, danger = true) => new Promise((resolve) => {
+if (!document.body) { resolve(window.confirm(message)); return; }
+const lines = String(message).split("\n");
+const titleText = lines.shift();
+const bodyText = lines.join("\n").trim();
+const dialog = document.createElement("div");
+dialog.className = "newtab-dialog newtab-confirm";
+dialog.setAttribute("role", "alertdialog");
+dialog.setAttribute("aria-modal", "true");
+const content = document.createElement("div");
+content.className = "newtab-dialog-content newtab-confirm-content";
+const title = document.createElement("h3");
+title.className = "newtab-confirm-title";
+title.id = "newtabConfirmTitle";
+title.textContent = titleText;
+dialog.setAttribute("aria-labelledby", title.id);
+content.appendChild(title);
+if (bodyText) { const text = document.createElement("p"); text.className = "newtab-confirm-text"; text.textContent = bodyText; content.appendChild(text); }
+const actions = document.createElement("div");
+actions.className = "newtab-confirm-actions";
+const cancelButton = document.createElement("button");
+cancelButton.type = "button";
+cancelButton.className = "newtab-settings-action";
+cancelButton.textContent = t("cancel");
+const okButton = document.createElement("button");
+okButton.type = "button";
+okButton.className = danger ? "newtab-settings-danger" : "newtab-settings-action";
+okButton.textContent = okLabel;
+actions.append(cancelButton, okButton);
+content.appendChild(actions);
+dialog.appendChild(content);
+let done = false;
+const onKey = (event) => {
+if (event.key === "Escape") { event.preventDefault(); event.stopImmediatePropagation(); finish(false); return; }
+if (event.key === "Tab") { event.preventDefault(); (document.activeElement === okButton ? cancelButton : okButton).focus(); }
+};
+const finish = (result) => {
+if (done) return;
+done = true;
+window.removeEventListener("keydown", onKey, true);
+dialog.classList.remove("is-open");
+dialog.classList.add("is-closing");
+setTimeout(() => dialog.remove(), 180);
+console.log(`[Dialog] Confirm ${result ? "accepted" : "cancelled"}: ${titleText}`);
+resolve(result);
+};
+cancelButton.addEventListener("click", () => finish(false));
+okButton.addEventListener("click", () => finish(true));
+dialog.addEventListener("click", (event) => { if (event.target === dialog) finish(false); });
+// SaeTab の Escape（いちばん上のダイアログを閉じる）より先に受け取って、確認だけを閉じる
+window.addEventListener("keydown", onKey, true);
+document.body.appendChild(dialog);
+requestAnimationFrame(() => { dialog.classList.add("is-open"); cancelButton.focus(); });
+});
 const createNewtabDialog = (titleText, contentBuilder) => { if (!document.body) { console.error("[Settings] document.body not found."); return null; } const existing = document.querySelector(".newtab-dialog"); if (existing) closeNewtabDialog(existing, "replaced"); const dialog = document.createElement("div"); dialog.className = "newtab-dialog"; dialog.setAttribute("role", "dialog"); dialog.setAttribute("aria-modal", "true"); const content = document.createElement("div"); content.className = "newtab-dialog-content"; const header = document.createElement("div"); header.className = "newtab-dialog-header"; const title = document.createElement("h3"); title.className = "newtab-dialog-title"; title.textContent = titleText; const closeBtn = document.createElement("button"); closeBtn.type = "button"; closeBtn.className = "newtab-dialog-close"; closeBtn.setAttribute("aria-label", t("close")); closeBtn.textContent = "×"; closeBtn.addEventListener("click", () => closeNewtabDialog(dialog, "button")); header.append(title, closeBtn); content.appendChild(header); if (typeof contentBuilder !== "function") console.error("[Settings] Dialog content builder missing."); else contentBuilder(content, dialog); dialog.appendChild(content); dialog.addEventListener("click", (event) => { if (event.target === dialog) closeNewtabDialog(dialog, "backdrop"); }); document.body.appendChild(dialog); requestAnimationFrame(() => { if (!document.body.contains(dialog)) { console.error(`[Dialog] Open animation cancelled: ${titleText}`); return; } dialog.classList.add("is-open"); closeBtn.focus(); console.log(`[Dialog] Dialog opened: ${titleText}`); }); return dialog; };
 const createSettingsSection = (parent, titleText) => { const section = document.createElement("section"); section.className = "newtab-settings-section"; const title = document.createElement("h4"); title.className = "newtab-settings-section-title"; title.textContent = titleText; section.appendChild(title); parent.appendChild(section); return section; };
 const createSettingsLink = (parent, label, url) => { if (!parent) { console.error(`[Settings] Link button parent missing: ${label}`); return null; } if (!url) { console.error(`[Settings] Link URL missing: ${label}`); return null; } const button = document.createElement("button"); button.type = "button"; button.className = "newtab-settings-link"; button.textContent = label; button.title = label; button.addEventListener("click", () => { try { const opened = window.open(url, "_blank", "noopener,noreferrer"); if (!opened) { console.error(`[Settings] Could not open link: ${url}`); return; } console.log(`[Settings] Opened link: ${url}`); } catch (error) { console.error(`[Settings] Link open failed: ${url}`, error); } }); parent.appendChild(button); return button; };
@@ -1244,7 +1306,7 @@ if (isSyncEnabled()) await syncOnOpen();
 };
 /* --- リセット --- */
 const resetNewtabSettings = async (allDevices) => {
-const confirmed = window.confirm(t(allDevices ? "resetAllConfirm" : "resetConfirm"));
+const confirmed = await confirmNewtab(t(allDevices ? "resetAllConfirm" : "resetConfirm"), t(allDevices ? "resetAllDevices" : "resetSettings"));
 if (!confirmed) { console.log("[Settings] Newtab settings reset cancelled."); return; }
 if (allDevices) {
 if (!(await canSync())) { console.error("[Sync] All-device reset requires sync."); return; }
@@ -1481,7 +1543,7 @@ deleteButton.type = "button";
 deleteButton.className = "newtab-settings-danger";
 deleteButton.textContent = t("delete");
 deleteButton.addEventListener("click", async () => {
-if (!window.confirm(t("extensionDeleteConfirm").replace("{name}", ext.name))) return;
+if (!(await confirmNewtab(t("extensionDeleteConfirm").replace("{name}", ext.name), t("delete")))) return;
 try { await deleteExtension(ext.id); }
 catch (error) { console.error("[Ext] Delete failed:", error); return; }
 await showManagementDialog();

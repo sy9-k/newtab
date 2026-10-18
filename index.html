@@ -404,6 +404,36 @@ opacity: 0;
 .newtab-dialog[hidden] {
 display: none;
 }
+/* 確認ダイアログ（confirmNewtab） */
+.newtab-confirm {
+z-index: 320;
+}
+.newtab-dialog-content.newtab-confirm-content {
+/* テーマはダイアログの幅を !important で決めるので、確認だけは小さく */
+width: min(400px, 100%) !important;
+padding: 24px;
+border-radius: 32px;
+}
+.newtab-confirm-title {
+margin: 0;
+font-size: 22px;
+font-weight: 500;
+line-height: 1.4;
+}
+.newtab-confirm-text {
+margin: 12px 0 0;
+font-size: 14px;
+line-height: 1.6;
+white-space: pre-line;
+opacity: 0.75;
+}
+.newtab-confirm-actions {
+display: flex;
+justify-content: flex-end;
+flex-wrap: wrap;
+gap: 8px;
+margin-top: 24px;
+}
 .newtab-dialog-content {
 width: min(520px, 100%);
 max-height: min(82vh, 760px);
